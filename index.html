@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D&D 5e Character Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-purple-700 to-indigo-900 min-h-screen flex items-center justify-center p-6">
+
+  <main class="bg-white rounded-lg shadow-xl max-w-4xl w-full p-8 space-y-8">
+
+    <h1 class="text-4xl font-extrabold text-center text-indigo-900 mb-6">D&D 5e Character Generator</h1>
+
+    <!-- Ability Scores Section -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div>
+        <h2 class="text-2xl font-bold mb-4 border-b pb-2">Ability Scores</h2>
+        <div class="space-y-3">
+
+          <button id="rollBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded transition w-full mb-4">Roll 4d6 Drop Lowest</button>
+
+          <button id="standardArrayBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-4 py-2 rounded transition w-full mb-4">Use Standard Array</button>
+
+          <button id="pointBuyBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-4 py-2 rounded transition w-full">Use Point Buy (27 points)</button>
+
+        </div>
+      </div>
+
+      <div class="col-span-2">
+        <div class="grid grid-cols-3 gap-4">
+          <template id="abilityInputTemplate">
+            <div>
+              <label class="block font-semibold text-indigo-900 mb-1" data-stat-name></label>
+              <input type="number" min="3" max="20" value="10" class="ability-input border rounded px-3 py-2 w-full" />
+              <p class="text-sm text-gray-600 mt-1" data-modifier></p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- Race and Class Section -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <div>
+        <label for="raceSelect" class="block font-bold text-indigo-900 mb-2 text-xl">Select Race</label>
+        <select id="raceSelect" class="border rounded p-3 w-full text-lg">
+        </select>
+        <p id="raceDescription" class="mt-3 italic text-gray-700"></p>
+      </div>
+
+      <div>
+        <label for="classSelect" class="block font-bold text-indigo-900 mb-2 text-xl">Select Class</label>
+        <select id="classSelect" class="border rounded p-3 w-full text-lg">
+        </select>
+        <p id="classDescription" class="mt-3 italic text-gray-700"></p>
+      </div>
+
+    </section>
+
+    <!-- Background Section -->
+    <section>
+      <label for="backgroundSelect" class="block font-bold text-indigo-900 mb-2 text-xl">Select Background</label>
+      <select id="backgroundSelect" class="border rounded p-3 w-full text-lg">
+      </select>
+      <p id="backgroundDescription" class="mt-3 italic text-gray-700"></p>
+    </section>
+
+    <!-- Summary Section -->
+    <section class="bg-indigo-50 p-6 rounded-lg shadow-inner">
+      <h2 class="text-3xl font-bold text-indigo-900 mb-4 text-center">Character Summary</h2>
+      <pre id="characterSummary" class="whitespace-pre-wrap font-mono text-indigo-900 text-lg"></pre>
+    </section>
+
+    <!-- Export Buttons -->
+    <section class="flex justify-center space-x-4">
+      <button id="exportTxt" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded transition">Export as TXT</button>
+      <button id="exportJSON" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded transition">Export as JSON</button>
+    </section>
+
+  </main>
+
+  <script>
+    const abilities = ["str","dex","con","int","wis","cha"];
+    const abilityNames = {
+      str: "Strength",
+      dex: "Dexterity",
+      con: "Constitution",
+      int: "Intelligence",
+      wis: "Wisdom",
+      cha: "Charisma"
+    };
+
+    const races = {
+      human: { 
+        name: "Human", 
+        bonuses: {str:1, dex:1, con:1, int:1, wis:1, cha:1},
+        description: "Humans are versatile and ambitious, gaining +1 to all ability scores."
+      },
+      elf: {
+        name: "Elf",
+        bonuses: {dex:2},
+        description: "Elves are nimble and perceptive, gaining +2 Dexterity."
+      },
+      highElf: {
+        name: "High Elf",
+        bonuses: {dex:2, int:1},
+        description: "High Elves gain +2 Dexterity and +1 Intelligence."
+      },
+      woodElf: {
+        name: "Wood Elf",
+        bonuses: {dex:2, wis:1},
+        description: "Wood Elves gain +2 Dexterity and +1 Wisdom."
+      },
+      darkElf: {
+        name: "Drow",
+        bonuses: {dex:2, cha:1},
+        description: "Drow gain +2 Dexterity and +1 Charisma."
+      },
+      dwarf: {
+        name: "Dwarf",
+        bonuses: {con:2},
+        description: "Dwarves are hardy and strong, gaining +2 Constitution."
+      },
+      hillDwarf: {
+        name: "Hill Dwarf",
+        bonuses: {con:2, wis:1},
+        description: "Hill Dwarves gain +2 Constitution and +1 Wisdom."
+      },
+      mountainDwarf: {
+        name: "Mountain Dwarf",
+        bonuses: {con:2, str:2},
+        description: "Mountain Dwarves gain +2 Constitution and +2 Strength."
+      },
+      halfling: {
+        name: "Halfling",
+        bonuses: {dex:2},
+        description: "Halflings are lucky and nimble, gaining +2 Dexterity."
+      },
+      lightfootHalfling: {
+        name: "Lightfoot Halfling",
+        bonuses: {dex:2, cha:1},
+        description: "Lightfoot Halflings gain +2 Dexterity and +1 Charisma."
+      },
+      stoutHalfling: {
+        name: "Stout Halfling",
+        bonuses: {dex:2, con:1},
+        description: "Stout Halflings gain +2 Dexterity and +1 Constitution."
+      },
+      orc: {
+        name: "Orc",
+        bonuses: {str:2, con:1, int:-2},
+        description: "Orcs are strong but less intelligent, gaining +2 Strength, +1 Constitution, and -2 Intelligence."
+      }
+    };
+
+    const classes = {
+      barbarian: {
+        name: "Barbarian",
+        hitDie: 12,
+        description: "Barbarians are fierce warriors who excel in melee combat and rage."
+      },
+      bard: {
+        name: "Bard",
+        hitDie: 8,
+        description: "Bards are versatile spellcasters and performers with magical music."
+      },
+      cleric: {
+        name: "Cleric",
+        hitDie: 8,
+        description: "Clerics are divine spellcasters who serve deities and heal allies."
+      },
+      druid: {
+        name: "Druid",
+        hitDie: 8,
+        description: "Druids command nature magic and can transform into animals."
+      },
+      fighter: {
+        name: "Fighter",
+        hitDie: 10,
+        description: "Fighters are skilled combatants, masters of weapons and tactics."
+      },
+      monk: {
+        name: "Monk",
+        hitDie: 8,
+        description: "Monks are martial artists who harness ki to perform extraordinary feats."
+      },
+      paladin: {
+        name: "Paladin",
+        hitDie: 10,
+        description: "Paladins are holy warriors bound by oaths to fight evil."
+      },
+      ranger: {
+        name: "Ranger",
+        hitDie: 10,
+        description: "Rangers are skilled hunters and trackers, with nature magic."
+      },
+      rogue: {
+        name: "Rogue",
+        hitDie: 8,
+        description: "Rogues are stealthy and cunning, excelling in sneak attacks."
+      },
+      sorcerer: {
+        name: "Sorcerer",
+        hitDie: 6,
+        description: "Sorcerers possess innate magical power from bloodlines or fate."
+      },
+      warlock: {
+        name: "Warlock",
+        hitDie: 8,
+        description: "Warlocks gain magical powers from pacts with powerful entities."
+      },
+      wizard: {
+        name: "Wizard",
+        hitDie: 6,
+        description: "Wizards are scholarly spellcasters who study arcane magic."
+      }
+    };
+
+    const backgrounds = {
+      acolyte: {
+        name: "Acolyte",
+        description: "You have spent your life in the service of a temple to a specific god or pantheon."
+      },
+      criminal: {
+        name: "Criminal",
+        description: "You have a history of breaking the law and surviving by any means."
+      },
+      folkHero: {
+        name: "Folk Hero",
+        description: "You come from humble origins and have stood up for common folk."
+      },
+      noble: {
+        name: "Noble",
+        description: "You understand wealth, power, and privilege."
+      },
+      soldier: {
+        name: "Soldier",
+        description: "You have military training and discipline."
+      }
+    };
+
+    const abilitiesContainer = document.querySelector('section.grid div.col-span-2 > div.grid');
+    const abilityInputTemplate = document.getElementById('abilityInputTemplate').content;
+
+    let abilityInputs = {};
+
+    for (let ab of abilities) {
+      let clone = document.importNode(abilityInputTemplate, true);
+      clone.querySelector('[data-stat-name]').textContent = abilityNames[ab];
+      const input = clone.querySelector('input');
+      input.id = ab;
+      input.value = 10;
+      const modText = clone.querySelector('[data-modifier]');
+      abilityInputs[ab] = { input, modText };
+      input.addEventListener('input', () => {
+        updateModifier(ab);
+        updateSummary();
+      });
+      abilitiesContainer.appendChild(clone);
+    }
+
+    function updateModifier(stat) {
+      const val = parseInt(abilityInputs[stat].input.value) || 10;
+      const mod = getModifier(val);
+      abilityInputs[stat].modText.textContent = `Modifier: ${mod >= 0 ? "+" : ""}${mod}`;
+    }
+
+    function getModifier(score) {
+      return Math.floor((score - 10) / 2);
+    }
+
+    function rollStat() {
+      let rolls = [];
+      for (let i = 0; i < 4; i++) rolls.push(Math.floor(Math.random() * 6) + 1);
+      rolls.sort((a,b) => a - b);
+      rolls.shift();
+      return rolls.reduce((a,b) => a + b, 0);
+    }
+
+    function rollAllStats() {
+      for (let ab of abilities) {
+        const val = rollStat();
+        abilityInputs[ab].input.value = val;
+        updateModifier(ab);
+      }
+      updateSummary();
+    }
+
+    const standardArray = [15,14,13,12,10,8];
+    function applyStandardArray() {
+      for (let i = 0; i < abilities.length; i++) {
+        abilityInputs[abilities[i]].input.value = standardArray[i];
+        updateModifier(abilities[i]);
+      }
+      updateSummary();
+    }
+
+    const pointBuyCosts = {8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9};
+    let pointBuyPoints = 27;
+
+    function applyPointBuy() {
+      // reset to 8
+      for (let ab of abilities) {
+        abilityInputs[ab].input.value = 8;
+        updateModifier(ab);
+      }
+      updateSummary();
+      alert("Now, manually adjust your ability scores between 8-15 so that the total cost does not exceed 27 points. Costs: 9=1pt, 10=2pt, 11=3pt, 12=4pt, 13=5pt, 14=7pt, 15=9pt.");
+    }
+
+    function validatePointBuy() {
+      let totalCost = 0;
+      for (let ab of abilities) {
+        let val = parseInt(abilityInputs[ab].input.value);
+        if (isNaN(val) || val < 8) val = 8;
+        if (val > 15) val = 15;
+        abilityInputs[ab].input.value = val;
+        totalCost += pointBuyCosts[val] || 0;
+      }
+      if (totalCost > 27) {
+        alert(`Point buy cost exceeded! Current cost: ${totalCost}. Please lower some scores.`);
+        return false;
+      }
+      updateSummary();
+      return true;
+    }
+
+    const raceSelect = document.getElementById("raceSelect");
+    const raceDescription = document.getElementById("raceDescription");
+
+    for (const key in races) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = races[key].name;
+      raceSelect.appendChild(option);
+    }
+
+    const classSelect = document.getElementById("classSelect");
+    const classDescription = document.getElementById("classDescription");
+
+    for (const key in classes) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = classes[key].name;
+      classSelect.appendChild(option);
+    }
+
+    const backgroundSelect = document.getElementById("backgroundSelect");
+    const backgroundDescription = document.getElementById("backgroundDescription");
+    for (const key in backgrounds) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = backgrounds[key].name;
+      backgroundSelect.appendChild(option);
+    }
+
+    raceSelect.addEventListener("change", () => {
+      const sel = raceSelect.value;
+      raceDescription.textContent = races[sel].description;
+      updateSummary();
+    });
+
+    classSelect.addEventListener("change", () => {
+      const sel = classSelect.value;
+      classDescription.textContent = classes[sel].description;
+      updateSummary();
+    });
+
+    backgroundSelect.addEventListener("change", () => {
+      const sel = backgroundSelect.value;
+      backgroundDescription.textContent = backgrounds[sel].description;
+      updateSummary();
+    });
+
+    function getFinalAbilities() {
+      const race = races[raceSelect.value];
+      let finalScores = {};
+      for (let ab of abilities) {
+        let base = parseInt(abilityInputs[ab].input.value) || 10;
+        let bonus = race && race.bonuses[ab] ? race.bonuses[ab] : 0;
+        finalScores[ab] = base + bonus;
+      }
+      return finalScores;
+    }
+
+    function calcHitPoints() {
+      const cls = classes[classSelect.value];
+      if (!cls) return 0;
+      const conMod = getModifier(getFinalAbilities().con);
+      return cls.hitDie + conMod > 1 ? cls.hitDie + conMod : 1;
+    }
+
+    function updateSummary() {
+      const race = races[raceSelect.value];
+      const cls = classes[classSelect.value];
+      const bg = backgrounds[backgroundSelect.value];
+      if (!race || !cls || !bg) {
+        document.getElementById("characterSummary").textContent = "Select race, class, background, and set ability scores.";
+        return;
+      }
+
+      const finalAbilities = getFinalAbilities();
+
+      let lines = [];
+
+      lines.push(`Race: ${race.name}`);
+      lines.push(`Class: ${cls.name}`);
+      lines.push(`Background: ${bg.name}`);
+      lines.push("");
+
+      lines.push("Ability Scores (with racial bonuses):");
+      for (let ab of abilities) {
+        let base = parseInt(abilityInputs[ab].input.value) || 10;
+        let bonus = race.bonuses[ab] || 0;
+        let final = finalAbilities[ab];
+        lines.push(`  ${abilityNames[ab]}: ${final} (Base: ${base} + Racial: ${bonus >= 0 ? "+" : ""}${bonus})  Modifier: ${getModifier(final) >= 0 ? "+" : ""}${getModifier(final)}`);
+      }
+      lines.push("");
+      lines.push(`Hit Points (Level 1): ${calcHitPoints()}`);
+      lines.push("");
+      lines.push(`Race Description: ${race.description}`);
+      lines.push(`Class Description: ${cls.description}`);
+      lines.push(`Background Description: ${bg.description}`);
+
+      document.getElementById("characterSummary").textContent = lines.join("\n");
+    }
+
+    // Export TXT
+    document.getElementById("exportTxt").addEventListener("click", () => {
+      const txt = document.getElementById("characterSummary").textContent;
+      const blob = new Blob([txt], {type: "text/plain"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dnd_character.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Export JSON
+    document.getElementById("exportJSON").addEventListener("click", () => {
+      const finalAbilities = getFinalAbilities();
+      const json = {
+        race: raceSelect.value,
+        class: classSelect.value,
+        background: backgroundSelect.value,
+        baseAbilityScores: {},
+        finalAbilityScores: finalAbilities,
+        hitPoints: calcHitPoints()
+      };
+      for (let ab of abilities) {
+        json.baseAbilityScores[ab] = parseInt(abilityInputs[ab].input.value) || 10;
+      }
+      const jsonStr = JSON.stringify(json, null, 2);
+      const blob = new Blob([jsonStr], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dnd_character.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Hook up ability score buttons
+    document.getElementById("rollBtn").addEventListener("click", () => {
+      rollAllStats();
+    });
+
+    document.getElementById("standardArrayBtn").addEventListener("click", () => {
+      applyStandardArray();
+    });
+
+    document.getElementById("pointBuyBtn").addEventListener("click", () => {
+      applyPointBuy();
+    });
+
+    // On any ability input change, if point buy active, validate points
+    for (let ab of abilities) {
+      abilityInputs[ab].input.addEventListener("input", () => {
+        // Only validate if point buy mode was last activated
+        if (pointBuyActive) {
+          validatePointBuy();
+        } else {
+          updateModifier(ab);
+          updateSummary();
+        }
+      });
+    }
+
+    // Track if point buy mode is active
+    let pointBuyActive = false;
+
+    document.getElementById("pointBuyBtn").addEventListener("click", () => {
+      pointBuyActive = true;
+    });
+    document.getElementById("rollBtn").addEventListener("click", () => {
+      pointBuyActive = false;
+    });
+    document.getElementById("standardArrayBtn").addEventListener("click", () => {
+      pointBuyActive = false;
+    });
+
+    // Init defaults
+    raceSelect.value = "human";
+    raceDescription.textContent = races["human"].description;
+    classSelect.value = "fighter";
+    classDescription.textContent = classes["fighter"].description;
+    backgroundSelect.value = "folkHero";
+    backgroundDescription.textContent = backgrounds["folkHero"].description;
+    applyStandardArray();
+
+  </script>
+
+</body>
+</html>
